@@ -17,19 +17,24 @@ namespace Glyphfriend.Packager
             BinarySerializeGlyphsToFile(glyphDictionary);
         }
 
-        private static Dictionary<string, byte[]> ConvertGlyphsToDictionary()
+        private static Dictionary<string, Dictionary<string, byte[]>> ConvertGlyphsToDictionary()
         {
-            var glyphs = new Dictionary<string, byte[]>();
+            var glyphs = new Dictionary<string, Dictionary<string,byte[]>>();
             var glyphDirectory = new DirectoryInfo("../../Glyphs");
             foreach (var glyph in glyphDirectory.EnumerateFiles("*.png", SearchOption.AllDirectories))
             {
+                var directory = glyph.Directory.Name;
+                if (!glyphs.ContainsKey(directory))
+                {
+                    glyphs.Add(directory, new Dictionary<string, byte[]>());
+                }
                 var glyphContent = StreamHelpers.ReadFully(new FileStream(glyph.FullName, FileMode.Open));
-                glyphs.Add(Path.GetFileNameWithoutExtension(glyph.Name), glyphContent);
+                glyphs[directory].Add(Path.GetFileNameWithoutExtension(glyph.Name), glyphContent);
             }
             return glyphs;
         }
 
-        private static void BinarySerializeGlyphsToFile(Dictionary<string, byte[]> glyphs)
+        private static void BinarySerializeGlyphsToFile(Dictionary<string, Dictionary<string, byte[]>> glyphs)
         {
             using (var ms = new FileStream("../../Binary/glyphs.bin", FileMode.Create))
             {

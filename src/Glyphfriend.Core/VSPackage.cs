@@ -20,12 +20,14 @@ namespace Glyphfriend
     {
         public const string HtmlFileLoadedContext = "21F5568E-A5DE-4821-AF39-F4F1049BB9CF";
 
-        internal static Dictionary<string, ImageSource> Glyphs { get; private set; }
+        internal static Dictionary<string,bool> EnabledLibraries { get; private set; }
+        internal static Dictionary<string, Dictionary<string, ImageSource>> Glyphs { get; private set; }
         internal static string AssemblyLocation => Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
         protected override void Initialize()
         {
             DeserializeGlyphsFromBinary();
+            SetEnabledLibraries();
         }
 
         private void DeserializeGlyphsFromBinary()
@@ -34,18 +36,19 @@ namespace Glyphfriend
             Glyphs = ConvertBinaryGlyphDictionaryToGlyphDictionary(binaryGlyphDictionary);
         }
 
-        private Dictionary<string, byte[]> DeserializeBinaryGlyphs()
+        private Dictionary<string, Dictionary<string, byte[]>> DeserializeBinaryGlyphs()
         {
             var binaryPath = Path.Combine(AssemblyLocation, "glyphs.bin");
             using (var fs = File.Open(binaryPath, FileMode.Open))
             {
-                return Serializer.Deserialize<Dictionary<string, byte[]>>(fs);
+                return Serializer.Deserialize< Dictionary<string, Dictionary<string, byte[]>>>(fs);
             }
         }
 
-        private Dictionary<string, ImageSource> ConvertBinaryGlyphDictionaryToGlyphDictionary(Dictionary<string, byte[]> dictionary)
+        private Dictionary<string, Dictionary<string,ImageSource>> ConvertBinaryGlyphDictionaryToGlyphDictionary(Dictionary<string, Dictionary<string, byte[]>> dictionary)
         {
-            return dictionary.ToDictionary(k => k.Key, v => BytesToImage(v.Value));
+            // Convert the Dictionary from a mapping of byte[] values to one that uses ImageSources
+            return dictionary.ToDictionary(k => k.Key, v => v.Value.ToDictionary(x => x.Key, y => BytesToImage(y.Value)));
         }
 
         private ImageSource BytesToImage(byte[] imageData)
@@ -60,6 +63,14 @@ namespace Glyphfriend
                 image.EndInit();
             }
             return image as ImageSource;
+        }
+
+        private void SetEnabledLibraries()
+        {
+            // Default each library to enabled
+            EnabledLibraries = Glyphs.ToDictionary(k => k.Key, v => false);
+            EnabledLibraries["FontAwesome"] = true;
+            // Consider reading settings here
         }
     }
 }
